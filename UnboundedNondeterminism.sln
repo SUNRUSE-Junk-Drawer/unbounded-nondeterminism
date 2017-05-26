@@ -14,6 +14,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnboundNondeterminism.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnboundedNondeterminism", "UnboundedNondeterminism\UnboundedNondeterminism.csproj", "{2CDE5CB2-EE64-474E-86DC-A6AE8227A1D1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnboundedNondeterminism.Web", "UnboundedNondeterminism.Web\UnboundedNondeterminism.Web.csproj", "{8C28B30A-60D1-42F2-8052-AD8AA061ADAB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnboundedNondeterminism.Web.Tests", "UnboundedNondeterminism.Web.Tests\UnboundedNondeterminism.Web.Tests.csproj", "{FA89A856-2A0A-44DB-B391-3843F089A6ED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,6 +32,14 @@ Global
 		{2CDE5CB2-EE64-474E-86DC-A6AE8227A1D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2CDE5CB2-EE64-474E-86DC-A6AE8227A1D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2CDE5CB2-EE64-474E-86DC-A6AE8227A1D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C28B30A-60D1-42F2-8052-AD8AA061ADAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C28B30A-60D1-42F2-8052-AD8AA061ADAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C28B30A-60D1-42F2-8052-AD8AA061ADAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C28B30A-60D1-42F2-8052-AD8AA061ADAB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA89A856-2A0A-44DB-B391-3843F089A6ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA89A856-2A0A-44DB-B391-3843F089A6ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA89A856-2A0A-44DB-B391-3843F089A6ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA89A856-2A0A-44DB-B391-3843F089A6ED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
