@@ -89,6 +89,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PersistableFactoryTests.cs" />
     <Compile Include="PersistableBaseTests.cs" />
     <Compile Include="PersistableDictionaryTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -69,6 +69,7 @@
   <ItemGroup>
     <Compile Include="PersistableBase.cs" />
     <Compile Include="PersistableDictionary.cs" />
+    <Compile Include="PersistableFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
