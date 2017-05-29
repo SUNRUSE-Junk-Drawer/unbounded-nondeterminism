@@ -12,9 +12,9 @@ namespace UnboundedNondeterminism.Web.Tests
 {
     public sealed class ContentTypeParserTests : TestKit
     {
-        public static ContentType WithParseableEncoding = new ContentType();
-        public static ContentType WithUnparseableEncoding = new ContentType();
-        public static ContentType AlternativeWithParseableEncoding = new ContentType();
+        public static ContentType WithParseableEncoding = new ContentType("text/xml");
+        public static ContentType WithUnparseableEncoding = new ContentType("application/json");
+        public static ContentType AlternativeWithParseableEncoding = new ContentType("image/png");
         public static IActorRef ExpectedSender;
         public static Encoding RequestDefault = new DummyEncoding();
         public static Encoding ResultEncoding = new DummyEncoding();
