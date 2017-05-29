@@ -103,6 +103,8 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ContentTypeParser.cs" />
+    <Compile Include="ContentTypeParserTasks.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <PropertyGroup>
