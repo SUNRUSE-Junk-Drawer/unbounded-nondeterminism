@@ -26,6 +26,7 @@ namespace UnboundedNondeterminism.Tests
             public Guid Reference;
             public Guid PersistenceGuid;
             public IActorRef CorrectSender;
+            public IActorRef RespondingTo;
         }
 
         public sealed class TestType : PersistableBase
@@ -43,7 +44,8 @@ namespace UnboundedNondeterminism.Tests
                 {
                     Reference = cnt.Reference,
                     PersistenceGuid = persistenceGuid,
-                    CorrectSender = Self
+                    CorrectSender = Self,
+                    RespondingTo = Sender
                 }));
                 Command(m => Assert.True(false));
             }
@@ -123,7 +125,7 @@ namespace UnboundedNondeterminism.Tests
             var referenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdA.PersistenceGuid });
 
-            ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender);
+            ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
             Assert.Equal(new[] { createdA.PersistenceGuid }, Created);
             Assert.Empty(Deleted);
         }
@@ -141,7 +143,7 @@ namespace UnboundedNondeterminism.Tests
             var referenceB = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceB }, PersistenceGuid = createdA.PersistenceGuid });
 
-            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender);
+            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
             Assert.Equal(responseA.CorrectSender, responseB.CorrectSender);
             Assert.Equal(new[] { createdA.PersistenceGuid }, Created);
             Assert.Empty(Deleted);
@@ -180,7 +182,7 @@ namespace UnboundedNondeterminism.Tests
             var referenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdB.PersistenceGuid });
 
-            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
             Assert.Equal(new[] { createdB.PersistenceGuid }, Created);
             Assert.Empty(Deleted);
         }
@@ -244,7 +246,7 @@ namespace UnboundedNondeterminism.Tests
             var referenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdB.PersistenceGuid });
 
-            ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+            ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
             Assert.Equal(new[] { createdB.PersistenceGuid }, Created);
             Assert.Empty(Deleted);
         }
@@ -310,11 +312,11 @@ namespace UnboundedNondeterminism.Tests
             ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
             var preReferenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = preReferenceA }, PersistenceGuid = createdForwardedRecovered.PersistenceGuid });
-            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceA && response.PersistenceGuid == createdForwardedRecovered.PersistenceGuid && sender == response.CorrectSender);
+            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceA && response.PersistenceGuid == createdForwardedRecovered.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var preReferenceB = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = preReferenceB }, PersistenceGuid = createdForwardedDeletedRecovered.PersistenceGuid });
-            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceB && response.PersistenceGuid == createdForwardedDeletedRecovered.PersistenceGuid && sender == response.CorrectSender);
+            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceB && response.PersistenceGuid == createdForwardedDeletedRecovered.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = createdForwardedDeletedRecovered.PersistenceGuid });
             ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
@@ -331,15 +333,15 @@ namespace UnboundedNondeterminism.Tests
 
             var referenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdB.PersistenceGuid });
-            var responseBA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+            var responseBA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var referenceB = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceB }, PersistenceGuid = createdA.PersistenceGuid });
-            var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender);
+            var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var referenceC = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceC }, PersistenceGuid = createdB.PersistenceGuid });
-            var responseBB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+            var responseBB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             Assert.Equal(responseBA.CorrectSender, responseBB.CorrectSender);
 
@@ -381,21 +383,21 @@ namespace UnboundedNondeterminism.Tests
 
             var referenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = recoveredCreatedA.PersistenceGuid });
-            var responseAA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender);
+            var responseAA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var referenceB = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceB }, PersistenceGuid = recoveredCreatedB.PersistenceGuid });
-            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == recoveredCreatedB.PersistenceGuid && sender == response.CorrectSender);
+            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == recoveredCreatedB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var referenceC = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceC }, PersistenceGuid = recoveredCreatedA.PersistenceGuid });
-            var responseAB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender);
+            var responseAB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             Assert.Equal(responseAA.CorrectSender, responseAB.CorrectSender);
 
             var referenceD = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceD }, PersistenceGuid = recoveredCreatedForwardedDeleted.PersistenceGuid });
-            var responseC = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == recoveredCreatedForwardedDeleted.PersistenceGuid && sender == response.CorrectSender);
+            var responseC = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == recoveredCreatedForwardedDeleted.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = recoveredCreatedDeleted.PersistenceGuid });
             ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
@@ -437,11 +439,11 @@ namespace UnboundedNondeterminism.Tests
 
             var preReferenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = preReferenceA }, PersistenceGuid = createdForwardedRecovered.PersistenceGuid });
-            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceA && response.PersistenceGuid == createdForwardedRecovered.PersistenceGuid && sender == response.CorrectSender);
+            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceA && response.PersistenceGuid == createdForwardedRecovered.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var preReferenceB = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = preReferenceB }, PersistenceGuid = createdForwardedDeletedRecovered.PersistenceGuid });
-            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceB && response.PersistenceGuid == createdForwardedDeletedRecovered.PersistenceGuid && sender == response.CorrectSender);
+            ExpectMsg<TestResponse>((response, sender) => response.Reference == preReferenceB && response.PersistenceGuid == createdForwardedDeletedRecovered.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = createdForwardedDeletedRecovered.PersistenceGuid });
             ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
@@ -468,7 +470,7 @@ namespace UnboundedNondeterminism.Tests
                 var referenceA = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdRecoveredForwardedDeleted.PersistenceGuid });
                 expectedCreated.Add(createdRecoveredForwardedDeleted.PersistenceGuid);
-                var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdRecoveredForwardedDeleted.PersistenceGuid && sender == response.CorrectSender);
+                var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdRecoveredForwardedDeleted.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = createdRecoveredForwardedDeleted.PersistenceGuid });
                 ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
@@ -484,16 +486,16 @@ namespace UnboundedNondeterminism.Tests
                 var referenceA = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdB.PersistenceGuid });
                 expectedCreated.Add(createdB.PersistenceGuid);
-                var responseBA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+                var responseBA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 var referenceB = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceB }, PersistenceGuid = createdA.PersistenceGuid });
                 expectedCreated.Add(createdA.PersistenceGuid);
-                var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender);
+                var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 var referenceC = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceC }, PersistenceGuid = createdB.PersistenceGuid });
-                var responseBB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+                var responseBB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 Assert.Equal(responseBA.CorrectSender, responseBB.CorrectSender);
 
@@ -505,7 +507,7 @@ namespace UnboundedNondeterminism.Tests
 
                 var referenceD = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceD }, PersistenceGuid = createdB.PersistenceGuid });
-                var responseCA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+                var responseCA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = createdForwardedRecovered.PersistenceGuid });
                 ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
@@ -534,23 +536,23 @@ namespace UnboundedNondeterminism.Tests
                 var referenceA = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = recoveredCreatedA.PersistenceGuid });
                 expectedCreated.Add(recoveredCreatedA.PersistenceGuid);
-                var responseAA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender);
+                var responseAA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 var referenceB = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceB }, PersistenceGuid = recoveredCreatedB.PersistenceGuid });
                 expectedCreated.Add(recoveredCreatedB.PersistenceGuid);
-                var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == recoveredCreatedB.PersistenceGuid && sender == response.CorrectSender);
+                var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == recoveredCreatedB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 var referenceC = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceC }, PersistenceGuid = recoveredCreatedA.PersistenceGuid });
-                var responseAB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender);
+                var responseAB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == recoveredCreatedA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 Assert.Equal(responseAA.CorrectSender, responseAB.CorrectSender);
 
                 var referenceD = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceD }, PersistenceGuid = recoveredCreatedForwardedDeleted.PersistenceGuid });
                 expectedCreated.Add(recoveredCreatedForwardedDeleted.PersistenceGuid);
-                var responseC = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == recoveredCreatedForwardedDeleted.PersistenceGuid && sender == response.CorrectSender);
+                var responseC = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == recoveredCreatedForwardedDeleted.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
                 factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = recoveredCreatedDeleted.PersistenceGuid });
                 ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
@@ -586,11 +588,11 @@ namespace UnboundedNondeterminism.Tests
 
             var referenceA = Guid.NewGuid();
             factoryA.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdA.PersistenceGuid });
-            var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender);
+            var responseA = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var referenceB = Guid.NewGuid();
             factoryB.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceB }, PersistenceGuid = createdB.PersistenceGuid });
-            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceB && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             Assert.NotEqual(responseA.CorrectSender, responseB.CorrectSender);
 
@@ -606,11 +608,11 @@ namespace UnboundedNondeterminism.Tests
 
             var referenceC = Guid.NewGuid();
             factoryA.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceC }, PersistenceGuid = createdA.PersistenceGuid });
-            var responseC = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender);
+            var responseC = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceC && response.PersistenceGuid == createdA.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             var referenceD = Guid.NewGuid();
             factoryB.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceD }, PersistenceGuid = createdB.PersistenceGuid });
-            var responseD = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+            var responseD = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceD && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             Assert.NotEqual(responseA.CorrectSender, responseB.CorrectSender);
 
@@ -631,7 +633,7 @@ namespace UnboundedNondeterminism.Tests
             var createdC = ExpectMsgFrom<PersistableFactory<TestType>.Created>(factory);
             var referenceA = Guid.NewGuid();
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceA }, PersistenceGuid = createdB.PersistenceGuid });
-            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender);
+            var responseB = ExpectMsg<TestResponse>((response, sender) => response.Reference == referenceA && response.PersistenceGuid == createdB.PersistenceGuid && sender == response.CorrectSender && response.RespondingTo == TestActor);
 
             factory.Tell(new PersistableBase.Stop());
             ExpectNoMsg();
