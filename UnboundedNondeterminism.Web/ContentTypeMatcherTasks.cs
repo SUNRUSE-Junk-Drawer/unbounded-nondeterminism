@@ -28,12 +28,34 @@ namespace UnboundedNondeterminism.Web
             public IEnumerable<ContentTypeParser.Parsed> ContentTypes;
         }
 
+        /// <summary>A request to check whether two <see cref="ContentType"/>s match.</summary>
+        /// <remarks>This takes into account *, etc.</remarks>
+        public sealed class Match
+        {
+            /// <summary>The first <see cref="ContentType"/> to check.</summary>
+            public ContentTypeParser.Parsed A;
+
+            /// <summary>The second <see cref="ContentType"/> to check.</summary>
+            public ContentTypeParser.Parsed B;
+        }
+
+        /// <summary>Returned in response to <see cref="Match"/> when <see cref="Match.A"/> and <see cref="Match.B"/> match.</summary>
+        public sealed class Matched { }
+
+        /// <summary>Returned in response to <see cref="Match"/> when <see cref="Match.A"/> and <see cref="Match.B"/> do not match.</summary>
+        public sealed class NotMatched { }
+
         /// <inheritdoc />
         /// <param name="contentTypeParser">The <see cref="ContentTypeParser"/> to defer to.</param>
         public ContentTypeMatcherTasks(IActorRef contentTypeParser)
         {
             Receive<ParseAndSort>(pas => !pas.ContentTypes.Any(), pas => Sender.Tell(new ParsedAndSorted { ContentTypes = Enumerable.Empty<ContentTypeParser.Parsed>() }));
             Receive<ParseAndSort>(pas => Context.ActorOf(Props.Create(() => new ParseAndSortAggregator(contentTypeParser, Self, Sender, pas.ContentTypes, pas.RequestDefault))));
+
+            Receive<Match>(m => m.A.Left != "*" && m.B.Left != "*" && m.A.Left != m.B.Left, m => Sender.Tell(new NotMatched()));
+            Receive<Match>(m => m.A.Right != "*" && m.B.Right != "*" && m.A.Right != m.B.Right, m => Sender.Tell(new NotMatched()));
+            Receive<Match>(m => m.A.Suffix != "*" && m.B.Suffix != "*" && m.A.Suffix != m.B.Suffix, m => Sender.Tell(new NotMatched()));
+            Receive<Match>(m => Sender.Tell(new Matched()));
         }
 
         /// <summary>Aggregates responses from <see cref="ContentTypeParser"/> to generate a completed <see cref="ParsedAndSorted"/>.</summary>

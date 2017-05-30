@@ -1,4 +1,5 @@
 ﻿using Akka.Actor;
+using Akka.TestKit.TestActors;
 using Akka.TestKit.Xunit2;
 using System;
 using System.Linq;
@@ -117,6 +118,151 @@ namespace UnboundedNondeterminism.Web.Tests
             tasks.Tell(new ContentTypeMatcherTasks.ParseAndSort { ContentTypes = new[] { "stable sorted test parseable a", "stable sorted test parseable b", "stable sorted test parseable c", "stable sorted test parseable d" }, RequestDefault = RequestDefault });
 
             Assert.Equal(new[] { ParsedJ, ParsedI, ParsedK, ParsedL }, ExpectMsgFrom<ContentTypeMatcherTasks.ParsedAndSorted>(tasks).ContentTypes);
+        }
+        #endregion
+
+        #region Match
+        [Theory]
+        [InlineData("*", "*", "*", "*", "*", "*", true)]
+        [InlineData("A Left", "*", "*", "*", "*", "*", true)]
+        [InlineData("*", "A Right", "*", "*", "*", "*", true)]
+        [InlineData("A Left", "A Right", "*", "*", "*", "*", true)]
+        [InlineData("*", "*", "A Suffix", "*", "*", "*", true)]
+        [InlineData("A Left", "*", "A Suffix", "*", "*", "*", true)]
+        [InlineData("*", "A Right", "A Suffix", "*", "*", "*", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "*", "*", "*", true)]
+        [InlineData("*", "*", "*", "B Left", "*", "*", true)]
+        [InlineData("A Left", "*", "*", "B Left", "*", "*", false)]
+        [InlineData("Same Left", "*", "*", "Same Left", "*", "*", true)]
+        [InlineData("*", "A Right", "*", "B Left", "*", "*", true)]
+        [InlineData("A Left", "A Right", "*", "B Left", "*", "*", false)]
+        [InlineData("Same Left", "A Right", "*", "Same Left", "*", "*", true)]
+        [InlineData("*", "*", "A Suffix", "B Left", "*", "*", true)]
+        [InlineData("A Left", "*", "A Suffix", "B Left", "*", "*", false)]
+        [InlineData("Same Left", "*", "A Suffix", "Same Left", "*", "*", true)]
+        [InlineData("*", "A Right", "A Suffix", "B Left", "*", "*", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "B Left", "*", "*", false)]
+        [InlineData("Same Left", "A Right", "A Suffix", "Same Left", "*", "*", true)]
+        [InlineData("*", "*", "*", "*", "B Right", "*", true)]
+        [InlineData("A Left", "*", "*", "*", "B Right", "*", true)]
+        [InlineData("*", "A Right", "*", "*", "B Right", "*", false)]
+        [InlineData("*", "Same Right", "*", "*", "Same Right", "*", true)]
+        [InlineData("A Left", "A Right", "*", "*", "B Right", "*", false)]
+        [InlineData("A Left", "Same Right", "*", "*", "Same Right", "*", true)]
+        [InlineData("*", "*", "A Suffix", "*", "B Right", "*", true)]
+        [InlineData("A Left", "*", "A Suffix", "*", "B Right", "*", true)]
+        [InlineData("*", "A Right", "A Suffix", "*", "B Right", "*", false)]
+        [InlineData("*", "Same Right", "A Suffix", "*", "Same Right", "*", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "*", "B Right", "*", false)]
+        [InlineData("A Left", "Same Right", "A Suffix", "*", "Same Right", "*", true)]
+        [InlineData("*", "*", "*", "B Left", "B Right", "*", true)]
+        [InlineData("A Left", "*", "*", "B Left", "B Right", "*", false)]
+        [InlineData("Same Left", "*", "*", "Same Left", "B Right", "*", true)]
+        [InlineData("*", "A Right", "*", "B Left", "B Right", "*", false)]
+        [InlineData("*", "Same Right", "*", "B Left", "Same Right", "*", true)]
+        [InlineData("A Left", "A Right", "*", "B Left", "B Right", "*", false)]
+        [InlineData("A Left", "Same Right", "*", "B Left", "Same Right", "*", false)]
+        [InlineData("Same Left", "A Right", "*", "Same Left", "B Right", "*", false)]
+        [InlineData("Same Left", "Same Right", "*", "Same Left", "Same Right", "*", true)]
+        [InlineData("*", "*", "A Suffix", "B Left", "B Right", "*", true)]
+        [InlineData("A Left", "*", "A Suffix", "B Left", "B Right", "*", false)]
+        [InlineData("Same Left", "*", "A Suffix", "Same Left", "B Right", "*", true)]
+        [InlineData("*", "A Right", "A Suffix", "B Left", "B Right", "*", false)]
+        [InlineData("*", "Same Right", "A Suffix", "B Left", "Same Right", "*", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "B Left", "B Right", "*", false)]
+        [InlineData("A Left", "Same Right", "A Suffix", "B Left", "Same Right", "*", false)]
+        [InlineData("Same Left", "A Right", "A Suffix", "Same Left", "B Right", "*", false)]
+        [InlineData("Sample Left", "Same Right", "A Suffix", "Sample Left", "Same Right", "*", true)]
+        [InlineData("*", "*", "*", "*", "*", "B Suffix", true)]
+        [InlineData("A Left", "*", "*", "*", "*", "B Suffix", true)]
+        [InlineData("*", "A Right", "*", "*", "*", "B Suffix", true)]
+        [InlineData("A Left", "A Right", "*", "*", "*", "B Suffix", true)]
+        [InlineData("*", "*", "A Suffix", "*", "*", "B Suffix", false)]
+        [InlineData("*", "*", "Same Suffix", "*", "*", "Same Suffix", true)]
+        [InlineData("A Left", "*", "A Suffix", "*", "*", "B Suffix", false)]
+        [InlineData("A Left", "*", "Same Suffix", "*", "*", "Same Suffix", true)]
+        [InlineData("*", "A Right", "A Suffix", "*", "*", "B Suffix", false)]
+        [InlineData("*", "A Right", "Same Suffix", "*", "*", "Same Suffix", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "*", "*", "B Suffix", false)]
+        [InlineData("A Left", "A Right", "Same Suffix", "*", "*", "Same Suffix", true)]
+        [InlineData("*", "*", "*", "B Left", "*", "B Suffix", true)]
+        [InlineData("A Left", "*", "*", "B Left", "*", "B Suffix", false)]
+        [InlineData("Same Left", "*", "*", "Same Left", "*", "B Suffix", true)]
+        [InlineData("*", "A Right", "*", "B Left", "*", "B Suffix", true)]
+        [InlineData("A Left", "A Right", "*", "B Left", "*", "B Suffix", false)]
+        [InlineData("Same Left", "A Right", "*", "Same Left", "*", "B Suffix", true)]
+        [InlineData("*", "*", "A Suffix", "B Left", "*", "B Suffix", false)]
+        [InlineData("*", "*", "Same Suffix", "B Left", "*", "Same Suffix", true)]
+        [InlineData("A Left", "*", "A Suffix", "B Left", "*", "B Suffix", false)]
+        [InlineData("Same Left", "*", "A Suffix", "Same Left", "*", "B Suffix", false)]
+        [InlineData("A Left", "*", "Same Suffix", "B Left", "*", "Same Suffix", false)]
+        [InlineData("Same Left", "*", "Same Suffix", "Same Left", "*", "Same Suffix", true)]
+        [InlineData("*", "A Right", "A Suffix", "B Left", "*", "B Suffix", false)]
+        [InlineData("*", "A Right", "Same Suffix", "B Left", "*", "Same Suffix", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "B Left", "*", "B Suffix", false)]
+        [InlineData("Same Left", "A Right", "A Suffix", "Same Left", "*", "B Suffix", false)]
+        [InlineData("A Left", "A Right", "Same Suffix", "B Left", "*", "Same Suffix", false)]
+        [InlineData("Same Left", "A Right", "Same Suffix", "Same Left", "*", "Same Suffix", true)]
+        [InlineData("*", "*", "*", "*", "B Right", "B Suffix", true)]
+        [InlineData("A Left", "*", "*", "*", "B Right", "B Suffix", true)]
+        [InlineData("*", "A Right", "*", "*", "B Right", "B Suffix", false)]
+        [InlineData("*", "Same Right", "*", "*", "Same Right", "B Suffix", true)]
+        [InlineData("A Left", "A Right", "*", "*", "B Right", "B Suffix", false)]
+        [InlineData("A Left", "Same Right", "*", "*", "Same Right", "B Suffix", true)]
+        [InlineData("*", "*", "A Suffix", "*", "B Right", "B Suffix", false)]
+        [InlineData("*", "*", "Same Suffix", "*", "B Right", "Same Suffix", true)]
+        [InlineData("A Left", "*", "A Suffix", "*", "B Right", "B Suffix", false)]
+        [InlineData("A Left", "*", "Same Suffix", "*", "B Right", "Same Suffix", true)]
+        [InlineData("*", "A Right", "A Suffix", "*", "B Right", "B Suffix", false)]
+        [InlineData("*", "Same Right", "A Suffix", "*", "Same Right", "B Suffix", false)]
+        [InlineData("*", "A Right", "Same Suffix", "*", "B Right", "Same Suffix", false)]
+        [InlineData("*", "Same Right", "Same Suffix", "*", "Same Right", "Same Suffix", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "*", "B Right", "B Suffix", false)]
+        [InlineData("A Left", "Same Right", "A Suffix", "*", "Same Right", "B Suffix", false)]
+        [InlineData("A Left", "A Right", "Same Suffix", "*", "B Right", "Same Suffix", false)]
+        [InlineData("A Left", "Same Right", "Same Suffix", "*", "Same Right", "Same Suffix", true)]
+        [InlineData("*", "*", "*", "B Left", "B Right", "B Suffix", true)]
+        [InlineData("A Left", "*", "*", "B Left", "B Right", "B Suffix", false)]
+        [InlineData("Same Left", "*", "*", "Same Left", "B Right", "B Suffix", true)]
+        [InlineData("*", "A Right", "*", "B Left", "B Right", "B Suffix", false)]
+        [InlineData("*", "Same Right", "*", "B Left", "Same Right", "B Suffix", true)]
+        [InlineData("A Left", "A Right", "*", "B Left", "B Right", "B Suffix", false)]
+        [InlineData("A Left", "Same Right", "*", "B Left", "Same Right", "B Suffix", false)]
+        [InlineData("Same Left", "A Right", "*", "Same Left", "B Right", "B Suffix", false)]
+        [InlineData("Same Left", "Same Right", "*", "Same Left", "Same Right", "B Suffix", true)]
+        [InlineData("*", "*", "A Suffix", "B Left", "B Right", "B Suffix", false)]
+        [InlineData("*", "*", "Same Suffix", "B Left", "B Right", "Same Suffix", true)]
+        [InlineData("A Left", "*", "A Suffix", "B Left", "B Right", "B Suffix", false)]
+        [InlineData("Same Left", "*", "A Suffix", "Same Left", "B Right", "B Suffix", false)]
+        [InlineData("A Left", "*", "Same Suffix", "B Left", "B Right", "Same Suffix", false)]
+        [InlineData("Same Left", "*", "Same Suffix", "Same Left", "B Right", "Same Suffix", true)]
+        [InlineData("*", "A Right", "A Suffix", "B Left", "B Right", "B Suffix", false)]
+        [InlineData("*", "Same Right", "A Suffix", "B Left", "Same Right", "B Suffix", false)]
+        [InlineData("*", "A Right", "Same Suffix", "B Left", "B Right", "Same Suffix", false)]
+        [InlineData("*", "Same Right", "Same Suffix", "B Left", "Same Right", "Same Suffix", true)]
+        [InlineData("A Left", "A Right", "A Suffix", "B Left", "B Right", "B Suffix", false)]
+        [InlineData("A Left", "Same Right", "A Suffix", "B Left", "Same Right", "B Suffix", false)]
+        [InlineData("Same Left", "A Right", "A Suffix", "Same Left", "B Right", "B Suffix", false)]
+        [InlineData("Sample Left", "Same Right", "A Suffix", "Sample Left", "Same Right", "B Suffix", false)]
+        [InlineData("A Left", "A Right", "Same Suffix", "B Left", "B Right", "Same Suffix", false)]
+        [InlineData("A Left", "Same Right", "Same Suffix", "B Left", "Same Right", "Same Suffix", false)]
+        [InlineData("Same Left", "A Right", "Same Suffix", "Same Left", "B Right", "Same Suffix", false)]
+        [InlineData("Sample Left", "Same Right", "Same Suffix", "Sample Left", "Same Right", "Same Suffix", true)]
+        public void Match(string leftA, string rightA, string suffixA, string leftB, string rightB, string suffixB, bool isMatch)
+        {
+            var blackHole = Sys.ActorOf(Props.Create<BlackHoleActor>());
+            var tasks = Sys.ActorOf(Props.Create(() => new ContentTypeMatcherTasks(blackHole)));
+
+            tasks.Tell(new ContentTypeMatcherTasks.Match
+            {
+                A = new ContentTypeParser.Parsed { Left = leftA, Right = rightA, Suffix = suffixA },
+                B = new ContentTypeParser.Parsed { Left = leftB, Right = rightB, Suffix = suffixB }
+            });
+
+            if (isMatch)
+                ExpectMsgFrom<ContentTypeMatcherTasks.Matched>(tasks);
+            else
+                ExpectMsgFrom<ContentTypeMatcherTasks.NotMatched>(tasks);
         }
         #endregion
     }
