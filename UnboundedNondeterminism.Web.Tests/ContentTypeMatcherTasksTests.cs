@@ -20,6 +20,10 @@ namespace UnboundedNondeterminism.Web.Tests
         public static ContentTypeParser.Parsed ParsedF = new ContentTypeParser.Parsed { Priority = 9.4m };
         public static ContentTypeParser.Parsed ParsedG = new ContentTypeParser.Parsed { Priority = 4.4m };
         public static ContentTypeParser.Parsed ParsedH = new ContentTypeParser.Parsed { Priority = 6.5m };
+        public static ContentTypeParser.Parsed ParsedI = new ContentTypeParser.Parsed { Priority = 4.3m };
+        public static ContentTypeParser.Parsed ParsedJ = new ContentTypeParser.Parsed { Priority = 6.5m };
+        public static ContentTypeParser.Parsed ParsedK = new ContentTypeParser.Parsed { Priority = 4.3m };
+        public static ContentTypeParser.Parsed ParsedL = new ContentTypeParser.Parsed { Priority = 2.1m };
 
         public sealed class DummyContentTypeParser : ReceiveActor
         {
@@ -37,6 +41,10 @@ namespace UnboundedNondeterminism.Web.Tests
                 Receive<ContentTypeParser.Parse>(p => p.ContentType == "alternative test parseable b" && p.RequestDefault == RequestDefault, p => Sender.Tell(ParsedF));
                 Receive<ContentTypeParser.Parse>(p => p.ContentType == "alternative test parseable c" && p.RequestDefault == RequestDefault, p => Sender.Tell(ParsedG));
                 Receive<ContentTypeParser.Parse>(p => p.ContentType == "alternative test parseable d" && p.RequestDefault == RequestDefault, p => Sender.Tell(ParsedH));
+                Receive<ContentTypeParser.Parse>(p => p.ContentType == "stable sorted test parseable a" && p.RequestDefault == RequestDefault, p => Sender.Tell(ParsedI));
+                Receive<ContentTypeParser.Parse>(p => p.ContentType == "stable sorted test parseable b" && p.RequestDefault == RequestDefault, p => Sender.Tell(ParsedJ));
+                Receive<ContentTypeParser.Parse>(p => p.ContentType == "stable sorted test parseable c" && p.RequestDefault == RequestDefault, p => Sender.Tell(ParsedK));
+                Receive<ContentTypeParser.Parse>(p => p.ContentType == "stable sorted test parseable d" && p.RequestDefault == RequestDefault, p => Sender.Tell(ParsedL));
                 ReceiveAny(m => Assert.True(false));
             }
         }
@@ -98,6 +106,17 @@ namespace UnboundedNondeterminism.Web.Tests
 
             Assert.Equal(new[] { ParsedB, ParsedA, ParsedC, ParsedD }, probeA.ExpectMsgFrom<ContentTypeMatcherTasks.ParsedAndSorted>(tasks).ContentTypes);
             Assert.Equal(new[] { ParsedF, ParsedH, ParsedG, ParsedE }, probeB.ExpectMsgFrom<ContentTypeMatcherTasks.ParsedAndSorted>(tasks).ContentTypes);
+        }
+
+        [Fact]
+        public void ParseAndSortAllParseReturnsParsedSortedStably()
+        {
+            var contentTypeParser = Sys.ActorOf(Props.Create(() => new DummyContentTypeParser()));
+            var tasks = Sys.ActorOf(Props.Create(() => new ContentTypeMatcherTasks(contentTypeParser)));
+
+            tasks.Tell(new ContentTypeMatcherTasks.ParseAndSort { ContentTypes = new[] { "stable sorted test parseable a", "stable sorted test parseable b", "stable sorted test parseable c", "stable sorted test parseable d" }, RequestDefault = RequestDefault });
+
+            Assert.Equal(new[] { ParsedJ, ParsedI, ParsedK, ParsedL }, ExpectMsgFrom<ContentTypeMatcherTasks.ParsedAndSorted>(tasks).ContentTypes);
         }
         #endregion
     }
