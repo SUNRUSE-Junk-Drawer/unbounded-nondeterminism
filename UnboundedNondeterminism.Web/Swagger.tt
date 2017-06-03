@@ -1,0 +1,239 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Runtime" #>
+<#@ assembly name="System.Threading.Tasks" #>
+<#@ assembly name="System.Collections" #>
+<#@ assembly name="$(SolutionDir)\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll" #>
+<#@ assembly name="$(SolutionDir)\packages\NJsonSchema.8.33.6323.36213\lib\net45\NJsonSchema.dll" #>
+<#@ assembly name="$(SolutionDir)\packages\NJsonSchema.CodeGeneration.8.33.6323.36234\lib\portable45-net45+win8+wp8+wpa81\NJsonSchema.CodeGeneration.dll" #>
+<#@ assembly name="$(SolutionDir)\packages\NSwag.Core.10.6.6324.28497\lib\portable45-net45+win8+wp8+wpa81\NSwag.Core.dll" #>
+<#@ assembly name="$(SolutionDir)\packages\NSwag.CodeGeneration.10.6.6324.28497\lib\portable45-net45+win8+wp8+wpa81\NSwag.CodeGeneration.dll" #>
+<#@ import namespace="NSwag" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="Microsoft.CSharp" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="NJsonSchema" #>
+<#@ output extension=".cs" #>
+<# 
+	Document = SwaggerDocument.FromFileAsync(Path.Combine(Host.ResolveAssemblyReference("$(ProjectDir)"), ("Swagger.swagger"))).Result; 
+#>
+using System;
+using System.Collections.Generic;
+using System.Web;
+using System.Web.Http;
+using System.Net;
+using System.Threading.Tasks;
+using Akka.Actor;
+
+namespace UnboundedNondeterminism.Web
+{
+	/// <summary>The entry point for the web API.</summary>
+	public partial class Global : HttpApplication
+	{
+		/// <summary>The global <see cref="ActorSystem" />.</summary>
+		public static ActorSystem ActorSystem;
+
+<#		foreach (var tag in Document.Tags)
+		{#>
+<#	#>		/// <summary>The <see cref="IActorRef" /> representing <see cref="Handlers.<#=PascalCaseSpaces(tag.Name)#>" />.</summary>
+<#	#>		public static IActorRef <#=PascalCaseSpaces(tag.Name)#>Handler;
+
+<#
+		}#>
+		private void Application_Start(object sender, EventArgs e) 
+		{
+			ActorSystem = ActorSystem.Create("UnboundedNondeterminism");
+<#			foreach (var tag in Document.Tags)
+			{ #>
+<#	#>			<#=PascalCaseSpaces(tag.Name)#>Handler = ActorSystem.ActorOf(Props.Create(() => new Handlers.<#=PascalCaseSpaces(tag.Name)#>()));
+<#
+			}
+#>			GlobalConfiguration.Configure(config => 
+			{<#
+				foreach (var operation in Document.Operations)
+				{
+					foreach (var tag in operation.Operation.Tags)
+					{#>
+
+<#		#>				config.Routes.MapHttpRoute(
+<#		#>					name: "<#=PascalCaseSpaces(tag)#><#=PascalCaseSpaces(operation.Method.ToString())#>",
+<#		#>					routeTemplate: "<#=operation.Path.Substring(1)#>",
+<#		#>					defaults: new { Controller = "<#=PascalCaseSpaces(tag)#>", Action = "<#=PascalCaseSpaces(operation.Method.ToString())#>" }
+<#		#>				);
+<#					}
+				}
+#>			});
+		}
+
+		private void Application_End(object sender, EventArgs e) 
+		{
+			if (ActorSystem == null) return;
+			ActorSystem.Dispose();
+			ActorSystem = null;
+		}
+	}
+
+	namespace Definitions
+	{<#
+		foreach (var definition in Document.Definitions.Where(d => d.Value.Type == JsonObjectType.Object)) {#>
+		
+		/// <summary><#=definition.Value.Description#></summary>
+		public sealed class <#=PascalCase(definition.Key)#>
+		{<#
+				foreach (var property in definition.Value.Properties) 
+				{#>
+
+<#		#>			/// <summary><#=property.Value.ActualPropertySchema.Description#></summary>
+<#		#>			public <#=SchemaName(property.Value.ActualPropertySchema, true)#> <#=PascalCase(property.Key)#> { get; set; }		
+<#				}#>
+<#	#>		}
+<#		}
+#>	}
+
+	namespace Requests
+	{<#
+		foreach (var operation in Document.Operations)
+		{
+			foreach (var tag in operation.Operation.Tags) 
+			{#>
+
+<#		#>		/// <summary>A message passed by <see cref="Controllers.<#=PascalCaseSpaces(tag)#>Controller.<#=operation.Method#>" /> to <see cref="Handlers.<#=PascalCaseSpaces(tag)#>" /> for every request.</summary>
+<#		#>		public sealed class <#=PascalCaseSpaces(tag)#><#=operation.Method#>
+<#		#>		{<#
+					foreach (var parameter in operation.Operation.ActualParameters)
+					{#>
+
+<#			#>			/// <summary><#
+						switch (parameter.Kind) {
+							case SwaggerParameterKind.Body:
+								#>The request body.<#
+								break;
+							case SwaggerParameterKind.Path:
+								#>The "<#=parameter.Name#>" URL fragment.<#
+								break;
+							default: throw new NotImplementedException(parameter.Type.ToString());
+						}
+						#></summary>
+<#			#>			public <#=SchemaName(parameter.Schema ?? parameter.ActualSchema, false)#> <#=PascalCase(parameter.Name)#>;
+<#					}
+		#>		}
+<#			}
+		}
+#>	}
+
+	/// <summary>A message to pass from the Akka handler back to the Web API controller when the response will be <see cref="HttpStatusCode.NoContent" />.</summary>
+	public sealed class Success {}
+
+	/// <summary>A message to pass from the Akka handler back to the Web API controller when the response represents an error.</summary>
+	public sealed class Error 
+	{
+		/// <summary>The <see cref="HttpStatusCode" /> to send in response.</summary>
+		public HttpStatusCode StatusCode;
+	}
+
+	namespace Controllers
+	{<#
+		foreach (var tag in Document.Tags) {#>
+
+<#	#>		/// <remarks><#=tag.Description#></remarks>
+<#	#>		public sealed class <#=PascalCaseSpaces(tag.Name)#>Controller : ApiController 
+<#	#>		{<#
+				foreach (var operation in Document.Operations.Where(o => o.Operation.Tags.Contains(tag.Name))) {
+					var responseType = operation.Operation.AllResponses.Single(r => r.Key.StartsWith("2")).Value.Schema;
+					var askType = responseType == null ? "Success" : SchemaName(responseType, false);#>
+
+<#		#>			/// <summary><#=operation.Operation.Description#></summary>
+<#		#>			[Http<#=operation.Method#>]
+<#		#>			public async <#=TaskSchemaName(responseType)#> <#=operation.Method#>(<#
+						var firstParameter = true;
+						foreach (var parameter in operation.Operation.ActualParameters) {
+							#><#=firstParameter ? "" : ", "#><#
+							firstParameter = false;
+							switch (parameter.Kind) {
+								case SwaggerParameterKind.Body:
+									#>[FromBody]<#
+									break;
+								case SwaggerParameterKind.Path:
+									#>[FromUri]<#
+									break;
+								default:
+									throw new NotImplementedException(parameter.Kind.ToString());
+							}
+							#> <#=SchemaName(parameter.Schema ?? parameter.ActualSchema, false)#> <#=parameter.Name#><#
+						}
+					#>) 
+<#		#>			{
+<#		#>				object response;
+<#		#>				try
+<#		#>				{
+<#		#>					response = await Global.<#=PascalCaseSpaces(tag.Name)#>Handler.Ask(new Requests.<#=PascalCaseSpaces(tag.Name)#><#=operation.Method#> 
+<#		#>					{<#
+								firstParameter = true;
+								foreach (var parameter in operation.Operation.ActualParameters) {
+									#><#=firstParameter ? "" : ", "#><#
+									firstParameter = false;
+									#>
+
+<#			#>						<#=PascalCase(parameter.Name)#> = <#=parameter.Name#><#
+								}#>		
+<#		#>					}, TimeSpan.FromSeconds(3));
+<#		#>				}
+<#		#>				catch (TaskCanceledException)
+<#		#>				{
+<#		#>					throw new HttpResponseException(HttpStatusCode.GatewayTimeout);
+<#		#>				}
+
+<#		#>				<#if (responseType == null)
+						{
+							#>if (response is Success) return;<#
+						}
+						else
+						{
+							#>if (response is <#=SchemaName(responseType, false)#>) return (<#=SchemaName(responseType, false)#>) response;<#
+						}#>
+
+<#		#>				if (response is Error) throw new HttpResponseException(((Error)response).StatusCode);
+<#		#>				throw new HttpResponseException(HttpStatusCode.InternalServerError);
+<#		#>			}
+<#				}
+
+	#>		}
+<#
+		}
+#>
+	}
+}<#+
+	public SwaggerDocument Document;
+
+	public string PascalCase(string str) {
+		return str.Substring(0, 1).ToUpper() + str.Substring(1);
+	}
+
+	public string PascalCaseSpaces(string str) {
+		return string.Concat(str.Split(null).Select(PascalCase));
+	}
+
+	public string PascalCaseDashes(string str) {
+		return string.Concat(str.Split('-').Select(PascalCase));
+	}
+
+	public string TaskSchemaName(JsonSchema4 schema) {
+		var type = SchemaName(schema, false);
+		if (type == "void") return "Task";
+		return $"Task<{type}>";
+	}
+
+	public string SchemaName(JsonSchema4 schema, bool insideDefinitionsNamespace) {
+		if (schema == null) return "void";
+		if (schema.HasSchemaReference) 
+		{
+			var output = PascalCase(Document.Definitions.Single(d => d.Value == schema.SchemaReference).Key);
+			if (!insideDefinitionsNamespace) output = $"Definitions.{output}";
+			return output;
+		}
+		if (schema.Type == JsonObjectType.Array) return $"IEnumerable<{SchemaName(schema.Item, insideDefinitionsNamespace)}>";
+		if (schema.Type == JsonObjectType.String && schema.Format == "uuid") return "Guid";
+		if (schema.Type == JsonObjectType.String) return "string";
+		throw new NotImplementedException(schema.Type.ToString());
+	}
+#>

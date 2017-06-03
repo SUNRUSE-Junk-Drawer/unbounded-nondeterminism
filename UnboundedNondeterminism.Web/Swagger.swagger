@@ -1,0 +1,380 @@
+﻿{
+  "swagger": "2.0",
+  "info": {
+    "title": "Unbounded Nondeterminism",
+    "version": "0.0.0"
+  },
+  "tags": [
+    {
+      "name": "rulesets",
+      "description": "Provides access to rulesets"
+    },
+    {
+      "name": "global variables",
+      "description": "Provides access to rulesets' global variables"
+    },
+    {
+      "name": "rules",
+      "description": "Provides access to rulesets' rules"
+    }
+  ],
+  "definitions": {
+    "name": {
+      "description": "A user-facing (and specified) name up to 50 characters long.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "nameWrapper": {
+      "description": "Wraps a name.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/name"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "id": {
+      "description": "Identifies an object or entity.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "idWrapper": {
+      "description": "Wraps an Id.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "idNameWrapper": {
+      "description": "Wraps an associated Id/Name pair.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "name": {
+          "$ref": "#/definitions/name"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ruleset": {
+      "description": "Represents a ruleset from a high-level view; an index of its contents.",
+      "type": "object",
+      "properties": {
+        "globalVariables": {
+          "description": "The global variables of the ruleset.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/idNameWrapper"
+          }
+        },
+        "rules": {
+          "description": "The names and ids of the rules in the ruleset.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/idNameWrapper"
+          }
+        }
+      },
+      "required": [
+        "globalVariables",
+        "rules"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "paths": {
+    "/rulesets": {
+      "post": {
+        "description": "Create a new, empty ruleset",
+        "tags": [
+          "rulesets"
+        ],
+        "responses": {
+          "200": {
+            "description": "A new, empty ruleset has been created",
+            "schema": {
+              "$ref": "#/definitions/idWrapper"
+            }
+          }
+        }
+      }
+    },
+    "/rulesets/{rulesetId}": {
+      "parameters": [
+        {
+          "name": "rulesetId",
+          "in": "path",
+          "description": "The id of a previously created ruleset",
+          "required": true,
+          "type": "string",
+          "format": "uuid"
+        }
+      ],
+      "get": {
+        "description": "Get a previously created ruleset",
+        "tags": [
+          "rulesets"
+        ],
+        "responses": {
+          "200": {
+            "description": "The ruleset has been retrieved",
+            "schema": {
+              "$ref": "#/definitions/ruleset"
+            }
+          },
+          "404": {
+            "description": "The ruleset does not exist"
+          },
+          "410": {
+            "description": "The ruleset has been deleted"
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a previously created ruleset",
+        "tags": [
+          "rulesets"
+        ],
+        "responses": {
+          "204": {
+            "description": "The global variable has been deleted"
+          },
+          "404": {
+            "description": "The global variable does not exist"
+          }
+        }
+      }
+    },
+    "/rulesets/{rulesetId}/global-variables": {
+      "post": {
+        "description": "Create a new global variable",
+        "tags": [
+          "global variables"
+        ],
+        "parameters": [
+          {
+            "name": "rulesetId",
+            "in": "path",
+            "description": "The id of a previously created ruleset",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A new global variable has been created",
+            "schema": {
+              "$ref": "#/definitions/idNameWrapper"
+            }
+          },
+          "404": {
+            "description": "The ruleset does not exist"
+          },
+          "410": {
+            "description": "The ruleset has been deleted"
+          }
+        }
+      }
+    },
+    "/rulesets/{rulesetId}/global-variables/{globalVariableId}": {
+      "parameters": [
+        {
+          "name": "rulesetId",
+          "in": "path",
+          "description": "The id of a previously created ruleset",
+          "required": true,
+          "type": "string",
+          "format": "uuid"
+        },
+        {
+          "name": "globalVariableId",
+          "in": "path",
+          "description": "The id of a previously created global variable",
+          "required": true,
+          "type": "string",
+          "format": "uuid"
+        }
+      ],
+      "put": {
+        "description": "Rename a previously created global variable",
+        "tags": [
+          "global variables"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/nameWrapper"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The global variable has been renamed"
+          },
+          "404": {
+            "description": "The ruleset or global variable does not exist"
+          },
+          "409": {
+            "description": "The global variable's new name is not unique"
+          },
+          "410": {
+            "description": "The ruleset or global variable has been deleted"
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a previously created global variable",
+        "tags": [
+          "global variables"
+        ],
+        "responses": {
+          "204": {
+            "description": "The global variable has been deleted"
+          },
+          "404": {
+            "description": "The ruleset or global variable does not exist"
+          },
+          "409": {
+            "description": "The global variable is referenced by a rule"
+          },
+          "410": {
+            "description": "The ruleset has been deleted"
+          }
+        }
+      }
+    },
+    "/rulesets/{rulesetId}/rules": {
+      "post": {
+        "description": "Create a new, empty rule",
+        "tags": [
+          "rules"
+        ],
+        "parameters": [
+          {
+            "name": "rulesetId",
+            "in": "path",
+            "description": "The id of a previously created ruleset",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A new rule has been created",
+            "schema": {
+              "$ref": "#/definitions/idNameWrapper"
+            }
+          },
+          "404": {
+            "description": "The ruleset does not exist"
+          },
+          "410": {
+            "description": "The ruleset has been deleted"
+          }
+        }
+      }
+    },
+    "/rulesets/{rulesetId}/rules/{ruleId}": {
+      "parameters": [
+        {
+          "name": "rulesetId",
+          "in": "path",
+          "description": "The id of a previously created ruleset",
+          "required": true,
+          "type": "string",
+          "format": "uuid"
+        },
+        {
+          "name": "ruleId",
+          "in": "path",
+          "description": "The id of a previously created rule",
+          "required": true,
+          "type": "string",
+          "format": "uuid"
+        }
+      ],
+      "get": {
+        "description": "Retrieve a previously created rule",
+        "tags": [
+          "rules"
+        ],
+        "responses": {
+          "200": {
+            "description": "The rule has been retrieved"
+          },
+          "404": {
+            "description": "The ruleset or rule does not exist"
+          },
+          "410": {
+            "description": "The ruleset or rule has been deleted"
+          }
+        }
+      },
+      "put": {
+        "description": "Update a previously created rule",
+        "tags": [
+          "rules"
+        ],
+        "responses": {
+          "204": {
+            "description": "The rule has been updated"
+          },
+          "400": {
+            "description": "The rule is invalid"
+          },
+          "404": {
+            "description": "The ruleset or rule does not exist"
+          },
+          "409": {
+            "description": "The rule's new name is not unique"
+          },
+          "410": {
+            "description": "The ruleset or rule has been deleted"
+          }
+        }
+      },
+      "delete": {
+        "description": "delete a previously created rule",
+        "tags": [
+          "rules"
+        ],
+        "responses": {
+          "204": {
+            "description": "The rule has been deleted"
+          },
+          "404": {
+            "description": "The ruleset or rule does not exist"
+          },
+          "409": {
+            "description": "The rule is referenced by a rule"
+          },
+          "410": {
+            "description": "The ruleset has been deleted"
+          }
+        }
+      }
+    }
+  }
+}
