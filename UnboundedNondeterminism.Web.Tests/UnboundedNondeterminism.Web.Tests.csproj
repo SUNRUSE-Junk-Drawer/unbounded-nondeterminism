@@ -107,6 +107,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\UnboundedNondeterminism.Tests\UnboundedNondeterminism.Tests.csproj">
+      <Project>{46a8f06c-e5b3-46e9-9a09-528b22154f20}</Project>
+      <Name>UnboundedNondeterminism.Tests</Name>
+    </ProjectReference>
     <ProjectReference Include="..\UnboundedNondeterminism.Web\UnboundedNondeterminism.Web.csproj">
       <Project>{8C28B30A-60D1-42F2-8052-AD8AA061ADAB}</Project>
       <Name>UnboundedNondeterminism.Web</Name>
