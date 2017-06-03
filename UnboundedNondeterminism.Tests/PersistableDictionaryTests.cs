@@ -1,6 +1,7 @@
 ﻿using Akka.Actor;
 using Akka.TestKit.Xunit2;
 using System;
+using System.Linq;
 using Xunit;
 
 namespace UnboundedNondeterminism.Tests
@@ -15,12 +16,45 @@ namespace UnboundedNondeterminism.Tests
         }
 
         [Fact]
+        public void GetAllReturnsNothingWhenEmpty()
+        {
+            var dictionary = Sys.ActorOf(Props.Create(() => new PersistableDictionary<string, int>(Guid.NewGuid())));
+
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Empty(gotAll.All);
+        }
+
+        [Fact]
         public void ReturnsDeletedWhenEmpty()
         {
             var dictionary = Sys.ActorOf(Props.Create(() => new PersistableDictionary<string, int>(Guid.NewGuid())));
 
             dictionary.Tell(new PersistableDictionary<string, int>.Delete { Key = "KeyA" });
             ExpectMsgFrom<PersistableDictionary<string, int>.Deleted>(dictionary);
+        }
+
+        [Fact]
+        public void GetAllReturnsAllWhenKeysCreated()
+        {
+            var dictionary = Sys.ActorOf(Props.Create(() => new PersistableDictionary<string, int>(Guid.NewGuid())));
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyA", Value = 7647 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 65463 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyC", Value = 535 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Equal(3, gotAll.All.Count);
+            Assert.Equal(7647, gotAll.All["KeyA"]);
+            Assert.Equal(65463, gotAll.All["KeyB"]);
+            Assert.Equal(535, gotAll.All["KeyC"]);
         }
 
         [Fact]
@@ -53,6 +87,28 @@ namespace UnboundedNondeterminism.Tests
 
             dictionary.Tell(new PersistableDictionary<string, int>.Delete { Key = "KeyB" });
             ExpectMsgFrom<PersistableDictionary<string, int>.Deleted>(dictionary);
+        }
+
+        [Fact]
+        public void GetAllDoesNotReturnDeletedKeys()
+        {
+            var dictionary = Sys.ActorOf(Props.Create(() => new PersistableDictionary<string, int>(Guid.NewGuid())));
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyA", Value = 7647 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 65463 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyC", Value = 535 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.Delete { Key = "KeyB" });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Deleted>(dictionary);
+
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Equal(2, gotAll.All.Count);
+            Assert.Equal(7647, gotAll.All["KeyA"]);
+            Assert.Equal(535, gotAll.All["KeyC"]);
         }
 
         [Fact]
@@ -97,6 +153,29 @@ namespace UnboundedNondeterminism.Tests
 
             dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 653653 });
             ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+        }
+
+        [Fact]
+        public void GetAllReturnsReplacedProperties()
+        {
+            var dictionary = Sys.ActorOf(Props.Create(() => new PersistableDictionary<string, int>(Guid.NewGuid())));
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyA", Value = 7647 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 65463 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyC", Value = 535 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 653653 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Equal(3, gotAll.All.Count);
+            Assert.Equal(7647, gotAll.All["KeyA"]);
+            Assert.Equal(653653, gotAll.All["KeyB"]);
+            Assert.Equal(535, gotAll.All["KeyC"]);
         }
 
         [Fact]
@@ -146,6 +225,55 @@ namespace UnboundedNondeterminism.Tests
 
             dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 653653 });
             ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+        }
+
+        [Fact]
+        public void GetAllReturnsRecreatedProperties()
+        {
+            var dictionary = Sys.ActorOf(Props.Create(() => new PersistableDictionary<string, int>(Guid.NewGuid())));
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyA", Value = 7647 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 65463 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyC", Value = 535 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.Delete { Key = "KeyB" });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Deleted>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 653653 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Equal(3, gotAll.All.Count);
+            Assert.Equal(7647, gotAll.All["KeyA"]);
+            Assert.Equal(653653, gotAll.All["KeyB"]);
+            Assert.Equal(535, gotAll.All["KeyC"]);
+        }
+
+        [Fact]
+        public void GetAllReturnsNothingWhenAllPropertiesDeleted()
+        {
+            var dictionary = Sys.ActorOf(Props.Create(() => new PersistableDictionary<string, int>(Guid.NewGuid())));
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyA", Value = 7647 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyB", Value = 65463 });
+            dictionary.Tell(new PersistableDictionary<string, int>.Specify { Key = "KeyC", Value = 535 });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Specified>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.Delete { Key = "KeyC" });
+            dictionary.Tell(new PersistableDictionary<string, int>.Delete { Key = "KeyA" });
+            dictionary.Tell(new PersistableDictionary<string, int>.Delete { Key = "KeyB" });
+            ExpectMsgFrom<PersistableDictionary<string, int>.Deleted>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Deleted>(dictionary);
+            ExpectMsgFrom<PersistableDictionary<string, int>.Deleted>(dictionary);
+
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Empty(gotAll.All);
         }
 
         [Fact]
@@ -263,6 +391,10 @@ namespace UnboundedNondeterminism.Tests
             ExpectMsgFrom<PersistableDictionary<string, int>.NotFound>(dictionary);
             dictionary.Tell(new PersistableDictionary<string, int>.Get { Key = "KeyB" });
             ExpectMsgFrom<PersistableDictionary<string, int>.NotFound>(dictionary);
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Empty(gotAll.All);
         }
 
         [Fact]
@@ -300,6 +432,13 @@ namespace UnboundedNondeterminism.Tests
             ExpectMsgFrom<PersistableDictionary<string, int>.Got>(dictionary, gp => gp.Value == 7647);
             dictionary.Tell(new PersistableDictionary<string, int>.Get { Key = "DeletedThenCreatedKey" });
             ExpectMsgFrom<PersistableDictionary<string, int>.Got>(dictionary, gp => gp.Value == 53838);
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Equal(3, gotAll.All.Count);
+            Assert.Equal(47474, gotAll.All["CreatedKey"]);
+            Assert.Equal(7647, gotAll.All["ReplacedKey"]);
+            Assert.Equal(53838, gotAll.All["DeletedThenCreatedKey"]);
         }
 
         [Fact]
@@ -337,6 +476,13 @@ namespace UnboundedNondeterminism.Tests
             ExpectMsgFrom<PersistableDictionary<string, int>.Got>(dictionary, gp => gp.Value == 7647);
             dictionary.Tell(new PersistableDictionary<string, int>.Get { Key = "DeletedThenCreatedKey" });
             ExpectMsgFrom<PersistableDictionary<string, int>.Got>(dictionary, gp => gp.Value == 53838);
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Equal(3, gotAll.All.Count);
+            Assert.Equal(47474, gotAll.All["CreatedKey"]);
+            Assert.Equal(7647, gotAll.All["ReplacedKey"]);
+            Assert.Equal(53838, gotAll.All["DeletedThenCreatedKey"]);
         }
 
         [Fact]
@@ -416,6 +562,18 @@ namespace UnboundedNondeterminism.Tests
             ExpectMsgFrom<PersistableDictionary<string, int>.NotFound>(dictionary);
             dictionary.Tell(new PersistableDictionary<string, int>.Get { Key = "DeletedSubsequentlyRecreatedKey" });
             ExpectMsgFrom<PersistableDictionary<string, int>.Got>(dictionary, gp => gp.Value == 653653);
+            dictionary.Tell(new PersistableDictionary<string, int>.GetAll());
+            var gotAll = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionary);
+            Assert.NotNull(gotAll.All);
+            Assert.Equal(8, gotAll.All.Count);
+            Assert.Equal(47474, gotAll.All["CreatedKey"]);
+            Assert.Equal(7647, gotAll.All["ReplacedKey"]);
+            Assert.Equal(53838, gotAll.All["DeletedThenCreatedKey"]);
+            Assert.Equal(737437, gotAll.All["SubsequentlyCreatedKey"]);
+            Assert.Equal(8353853, gotAll.All["SubsequentlyReplacedKey"]);
+            Assert.Equal(728338, gotAll.All["SubsequentlyDeletedThenCreatedKey"]);
+            Assert.Equal(363383, gotAll.All["CreatedSubsequentlyReplacedKey"]);
+            Assert.Equal(653653, gotAll.All["DeletedSubsequentlyRecreatedKey"]);
         }
 
         [Fact]
@@ -438,6 +596,16 @@ namespace UnboundedNondeterminism.Tests
             ExpectMsgFrom<PersistableDictionary<string, int>.Got>(dictionaryB, gp => gp.Value == 2424);
             dictionaryA.Tell(new PersistableDictionary<string, int>.Get { Key = "CreatedKey" });
             ExpectMsgFrom<PersistableDictionary<string, int>.Got>(dictionaryA, gp => gp.Value == 47474);
+            dictionaryA.Tell(new PersistableDictionary<string, int>.GetAll());
+            var gotAllA = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionaryA);
+            Assert.NotNull(gotAllA.All);
+            Assert.Equal(1, gotAllA.All.Count);
+            Assert.Equal(47474, gotAllA.All["CreatedKey"]);
+            dictionaryB.Tell(new PersistableDictionary<string, int>.GetAll());
+            var gotAllB = ExpectMsgFrom<PersistableDictionary<string, int>.GotAll>(dictionaryB);
+            Assert.NotNull(gotAllB.All);
+            Assert.Equal(1, gotAllB.All.Count);
+            Assert.Equal(2424, gotAllB.All["CreatedKey"]);
         }
     }
 }

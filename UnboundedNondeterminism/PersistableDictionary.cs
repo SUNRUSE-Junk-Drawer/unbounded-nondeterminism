@@ -56,6 +56,16 @@ namespace UnboundedNondeterminism
         /// <summary>Returned in response to <see cref="Get"/> when the property did not exist.</summary>
         public sealed class NotFound { }
 
+        /// <summary>Retrieves every <typeparamref name="TKey" />/<typeparamref name="TValue" />.</summary>
+        public sealed class GetAll { }
+
+        /// <summary>Returned in response to <see cref="GetAll"/>.</summary>
+        public sealed class GotAll
+        {
+            /// <summary>Every <typeparamref name="TKey" />/<typeparamref name="TValue" /> as of the time of processing.</summary>
+            public IReadOnlyDictionary<TKey, TValue> All;
+        }
+
         /// <inheritdoc />
         public PersistableDictionary(Guid persistenceGuid) : base(persistenceGuid)
         {
@@ -68,7 +78,7 @@ namespace UnboundedNondeterminism
             }));
             Recover<Specify>(sp => properties[sp.Key] = sp.Value);
 
-            Command<Delete>(dp => Persist(dp, pdp => 
+            Command<Delete>(dp => Persist(dp, pdp =>
             {
                 properties.Remove(pdp.Key);
                 Sender.Tell(new Deleted());
@@ -77,6 +87,10 @@ namespace UnboundedNondeterminism
 
             Command<Get>(gp => !properties.ContainsKey(gp.Key), gp => Sender.Tell(new NotFound()));
             Command<Get>(gp => Sender.Tell(new Got { Value = properties[gp.Key] }));
+
+            // Messages are supposed to be immutable, but on a local system we don't want the recipient getting a reference directly to our copy, as it can change!
+            // We also can't unit test this as the unit tests do serialize to ensure that all messages are serializable.
+            Command<GetAll>(ga => Sender.Tell(new GotAll { All = properties.ToDictionary(k => k.Key, v => v.Value) }));
         }
     }
 }
