@@ -39,11 +39,14 @@ namespace UnboundedNondeterminism
             public Guid PersistenceGuid;
         }
 
-        /// <summary>Returned in response to <see cref="Delete"/>.</summary>
-        /// <remarks>Returned regardless of whether the property existed to delete.</remarks>
+        /// <summary>Returned in response to <see cref="Delete"/>, or <see cref="Forward"/> when the <typeparamref name="T" /> associated with <see cref="Forward.PersistenceGuid"/> was previously deleted.</summary>
         public sealed class Deleted { }
 
+        /// <summary>Returned in response to <see cref="Delete"/> or <see cref="Forward"/> when no <typeparamref name="T" /> associated with <see cref="Delete.PersistenceGuid"/>/<see cref="Forward.PersistenceGuid"/> was ever created.</summary>
+        public sealed class NeverCreated { }
+
         private readonly Dictionary<Guid, IActorRef> Instances = new Dictionary<Guid, IActorRef>();
+        private readonly HashSet<Guid> DeletedInstances = new HashSet<Guid>();
 
         /// <inheritdoc />
         protected override void PostStop()
@@ -63,16 +66,23 @@ namespace UnboundedNondeterminism
             }));
             Recover<Created>(c => Instances[c.PersistenceGuid] = null);
 
-            Command<Delete>(d => !Instances.ContainsKey(d.PersistenceGuid), d => Sender.Tell(new Deleted()));
+            Command<Delete>(d => DeletedInstances.Contains(d.PersistenceGuid), d => Sender.Tell(new Deleted()));
+            Command<Delete>(d => !Instances.ContainsKey(d.PersistenceGuid), d => Sender.Tell(new NeverCreated()));
             Command<Delete>(d => Persist(d, pd =>
             {
                 if (Instances[pd.PersistenceGuid] != null) Instances[pd.PersistenceGuid].Tell(new Stop());
                 Instances.Remove(pd.PersistenceGuid);
+                DeletedInstances.Add(pd.PersistenceGuid);
                 Sender.Tell(new Deleted());
             }));
-            Recover<Delete>(d => Instances.Remove(d.PersistenceGuid));
+            Recover<Delete>(d =>
+            {
+                Instances.Remove(d.PersistenceGuid);
+                DeletedInstances.Add(d.PersistenceGuid);
+            });
 
-            Command<Forward>(d => !Instances.ContainsKey(d.PersistenceGuid), d => { });
+            Command<Forward>(d => DeletedInstances.Contains(d.PersistenceGuid), d => Sender.Tell(new Deleted()));
+            Command<Forward>(d => !Instances.ContainsKey(d.PersistenceGuid), d => Sender.Tell(new NeverCreated()));
             Command<Forward>(d => Instances[d.PersistenceGuid] == null, d =>
             {
                 var actor = Context.ActorOf(Props.Create<T>(Expression.Lambda<Func<T>>(Expression.New(typeof(T).GetConstructor(new[] { typeof(Guid) }), new[] { Expression.Constant(d.PersistenceGuid) }), Enumerable.Empty<ParameterExpression>())));

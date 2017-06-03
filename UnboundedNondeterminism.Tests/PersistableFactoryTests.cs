@@ -62,25 +62,25 @@ namespace UnboundedNondeterminism.Tests
         }
 
         [Fact]
-        public void ForwardToEmptyDoesNothing()
+        public void ForwardToEmptyReturnsNeverCreated()
         {
             var factory = Sys.ActorOf(Props.Create(() => new PersistableFactory<TestType>(Guid.NewGuid())));
 
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = Guid.NewGuid() }, PersistenceGuid = Guid.NewGuid() });
 
-            ExpectNoMsg();
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
             Assert.Empty(Created);
             Assert.Empty(Deleted);
         }
 
         [Fact]
-        public void DeleteEmptyReturnsDeleted()
+        public void DeleteEmptyReturnsNeverCreated()
         {
             var factory = Sys.ActorOf(Props.Create(() => new PersistableFactory<TestType>(Guid.NewGuid())));
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = Guid.NewGuid() });
 
-            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
             Assert.Empty(Created);
             Assert.Empty(Deleted);
         }
@@ -101,7 +101,7 @@ namespace UnboundedNondeterminism.Tests
         }
 
         [Fact]
-        public void ForwardToNonexistentDoesNothing()
+        public void ForwardToNonexistentReturnsNotFound()
         {
             var factory = Sys.ActorOf(Props.Create(() => new PersistableFactory<TestType>(Guid.NewGuid())));
 
@@ -109,8 +109,7 @@ namespace UnboundedNondeterminism.Tests
             var createdA = ExpectMsgFrom<PersistableFactory<TestType>.Created>(factory);
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = Guid.NewGuid() }, PersistenceGuid = Guid.NewGuid() });
 
-            ExpectNoMsg();
-            // Nothing was actually created as no messages were forwarded.
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
             Assert.Empty(Created);
             Assert.Empty(Deleted);
         }
@@ -188,7 +187,7 @@ namespace UnboundedNondeterminism.Tests
         }
 
         [Fact]
-        public void ForwardToDeletedDoesNothing()
+        public void ForwardToDeletedReturnsNotFound()
         {
             var factory = Sys.ActorOf(Props.Create(() => new PersistableFactory<TestType>(Guid.NewGuid())));
             factory.Tell(new PersistableFactory<TestType>.Create());
@@ -202,14 +201,13 @@ namespace UnboundedNondeterminism.Tests
 
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdB.PersistenceGuid });
 
-            ExpectNoMsg();
-            // Nothing was actually created as no messages were forwarded.
+            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
             Assert.Empty(Created);
             Assert.Empty(Deleted);
         }
 
         [Fact]
-        public void ForwardToDeletedPreviouslyForwardedToDoesNothing()
+        public void ForwardToDeletedPreviouslyForwardedToReturnsDeleted()
         {
             var factory = Sys.ActorOf(Props.Create(() => new PersistableFactory<TestType>(Guid.NewGuid())));
             factory.Tell(new PersistableFactory<TestType>.Create());
@@ -225,7 +223,7 @@ namespace UnboundedNondeterminism.Tests
 
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdB.PersistenceGuid });
 
-            ExpectNoMsg();
+            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
             Assert.Equal(new[] { createdB.PersistenceGuid }, Created);
             Assert.Equal(new[] { createdB.PersistenceGuid }, Deleted);
         }
@@ -285,10 +283,10 @@ namespace UnboundedNondeterminism.Tests
             factory = Sys.ActorOf(Props.Create(() => new PersistableFactory<TestType>(factoryGuid)));
 
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = Guid.NewGuid() });
-            ExpectNoMsg();
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = Guid.NewGuid() });
-            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
             Assert.Empty(Created);
             Assert.Empty(Deleted);
         }
@@ -346,14 +344,15 @@ namespace UnboundedNondeterminism.Tests
             Assert.Equal(responseBA.CorrectSender, responseBB.CorrectSender);
 
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdDeleted.PersistenceGuid });
+            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = Guid.NewGuid() });
-            ExpectNoMsg();
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = createdDeleted.PersistenceGuid });
             ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = Guid.NewGuid() });
-            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
 
             Assert.Equal(new[] { createdB.PersistenceGuid, createdA.PersistenceGuid }, Created);
             Assert.Empty(Deleted);
@@ -406,12 +405,14 @@ namespace UnboundedNondeterminism.Tests
             ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = recoveredCreatedDeleted.PersistenceGuid });
+            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = recoveredCreatedForwardedDeleted.PersistenceGuid });
+            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
             factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = Guid.NewGuid() });
-            ExpectNoMsg();
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
 
             factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = Guid.NewGuid() });
-            ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
 
             Assert.Equal(new[] { recoveredCreatedA.PersistenceGuid, recoveredCreatedB.PersistenceGuid, recoveredCreatedForwardedDeleted.PersistenceGuid }, Created);
             Assert.Equal(new[] { recoveredCreatedForwardedDeleted.PersistenceGuid }, Deleted);
@@ -476,8 +477,9 @@ namespace UnboundedNondeterminism.Tests
                 ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdRecoveredDeleted.PersistenceGuid });
+                ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdRecoveredForwardedDeleted.PersistenceGuid });
-                ExpectNoMsg();
+                ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
                 expectedDeleted.Add(createdRecoveredForwardedDeleted.PersistenceGuid);
             }
@@ -503,7 +505,7 @@ namespace UnboundedNondeterminism.Tests
                 ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
                 factory.Tell(new PersistableFactory<TestType>.Delete { PersistenceGuid = Guid.NewGuid() });
-                ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
+                ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
 
                 var referenceD = Guid.NewGuid();
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest { Reference = referenceD }, PersistenceGuid = createdB.PersistenceGuid });
@@ -513,9 +515,11 @@ namespace UnboundedNondeterminism.Tests
                 ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdForwardedDeletedRecovered.PersistenceGuid });
+                ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = Guid.NewGuid() });
+                ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factory);
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdDeleted.PersistenceGuid });
-                ExpectNoMsg();
+                ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
             }
 
             {
@@ -561,8 +565,9 @@ namespace UnboundedNondeterminism.Tests
                 ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = recoveredCreatedDeleted.PersistenceGuid });
+                ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
                 factory.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = recoveredCreatedForwardedDeleted.PersistenceGuid });
-                ExpectNoMsg();
+                ExpectMsgFrom<PersistableFactory<TestType>.Deleted>(factory);
 
                 expectedDeleted.Add(recoveredCreatedForwardedDeleted.PersistenceGuid);
             }
@@ -597,8 +602,9 @@ namespace UnboundedNondeterminism.Tests
             Assert.NotEqual(responseA.CorrectSender, responseB.CorrectSender);
 
             factoryA.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdB.PersistenceGuid });
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factoryA);
             factoryB.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdA.PersistenceGuid });
-            ExpectNoMsg();
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factoryB);
 
             factoryA.Tell(new PersistableBase.Stop());
             factoryB.Tell(new PersistableBase.Stop());
@@ -617,8 +623,9 @@ namespace UnboundedNondeterminism.Tests
             Assert.NotEqual(responseA.CorrectSender, responseB.CorrectSender);
 
             factoryA.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdB.PersistenceGuid });
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factoryA);
             factoryB.Tell(new PersistableFactory<TestType>.Forward { Message = new TestRequest(), PersistenceGuid = createdA.PersistenceGuid });
-            ExpectNoMsg();
+            ExpectMsgFrom<PersistableFactory<TestType>.NeverCreated>(factoryB);
         }
 
         [Fact]
