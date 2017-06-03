@@ -81,15 +81,15 @@ namespace UnboundedNondeterminism
                 DeletedInstances.Add(d.PersistenceGuid);
             });
 
-            Command<Forward>(d => DeletedInstances.Contains(d.PersistenceGuid), d => Sender.Tell(new Deleted()));
-            Command<Forward>(d => !Instances.ContainsKey(d.PersistenceGuid), d => Sender.Tell(new NeverCreated()));
-            Command<Forward>(d => Instances[d.PersistenceGuid] == null, d =>
+            Command<Forward>(f => DeletedInstances.Contains(f.PersistenceGuid), f => Sender.Tell(new Deleted()));
+            Command<Forward>(f => !Instances.ContainsKey(f.PersistenceGuid), f => Sender.Tell(new NeverCreated()));
+            Command<Forward>(f => Instances[f.PersistenceGuid] == null, f =>
             {
-                var actor = Context.ActorOf(Props.Create<T>(Expression.Lambda<Func<T>>(Expression.New(typeof(T).GetConstructor(new[] { typeof(Guid) }), new[] { Expression.Constant(d.PersistenceGuid) }), Enumerable.Empty<ParameterExpression>())));
-                Instances[d.PersistenceGuid] = actor;
-                actor.Tell(d.Message, Sender);
+                var actor = Context.ActorOf(Props.Create<T>(Expression.Lambda<Func<T>>(Expression.New(typeof(T).GetConstructor(new[] { typeof(Guid) }), new[] { Expression.Constant(f.PersistenceGuid) }), Enumerable.Empty<ParameterExpression>())));
+                Instances[f.PersistenceGuid] = actor;
+                actor.Tell(f.Message, Sender);
             });
-            Command<Forward>(d => Instances[d.PersistenceGuid].Tell(d.Message, Sender));
+            Command<Forward>(f => Instances[f.PersistenceGuid].Tell(f.Message, Sender));
         }
     }
 }
