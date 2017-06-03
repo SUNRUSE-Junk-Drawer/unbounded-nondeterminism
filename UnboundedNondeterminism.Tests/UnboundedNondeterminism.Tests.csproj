@@ -87,6 +87,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConfiguredTestKit.cs" />
     <Compile Include="PersistableFactoryTests.cs" />
     <Compile Include="PersistableBaseTests.cs" />
     <Compile Include="PersistableDictionaryTests.cs" />

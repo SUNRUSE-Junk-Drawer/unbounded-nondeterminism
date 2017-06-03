@@ -5,7 +5,7 @@ using Xunit;
 
 namespace UnboundedNondeterminism.Tests
 {
-    public sealed class PersistableDictionaryTests : TestKit
+    public sealed class PersistableDictionaryTests : ConfiguredTestKit
     {
         [Fact]
         public void DoesNothingWithoutBeingSentMessages()

@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace UnboundedNondeterminism.Tests
 {
-    public sealed class PersistableFactoryTests : TestKit
+    public sealed class PersistableFactoryTests : ConfiguredTestKit
     {
         public static SynchronizedCollection<Guid> Created = new SynchronizedCollection<Guid>();
         public static SynchronizedCollection<Guid> Deleted = new SynchronizedCollection<Guid>();
