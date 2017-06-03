@@ -29,7 +29,7 @@ namespace UnboundedNondeterminism
         /// <inheritdoc />
         public override string PersistenceId => $"{GetType().Name}-{PersistenceGuid}";
 
-        /// <summary>Call from extending classes to </summary>
+        /// <inheritdoc />
         /// <param name="persistenceGuid"><see cref="PersistenceGuid"/>.</param>
         public PersistableBase(Guid persistenceGuid)
         {

@@ -45,6 +45,7 @@ namespace UnboundedNondeterminism
 
         private readonly Dictionary<Guid, IActorRef> Instances = new Dictionary<Guid, IActorRef>();
 
+        /// <inheritdoc />
         protected override void PostStop()
         {
             foreach (var instance in Instances.Values) if (instance != null) instance.Tell(new Stop());
@@ -52,6 +53,7 @@ namespace UnboundedNondeterminism
             base.PostStop();
         }
 
+        /// <inheritdoc />
         public PersistableFactory(Guid persistenceGuid) : base(persistenceGuid)
         {
             Command<Create>(c => Persist(new Created { PersistenceGuid = Guid.NewGuid() }, pc =>

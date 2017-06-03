@@ -56,6 +56,7 @@ namespace UnboundedNondeterminism
         /// <summary>Returned in response to <see cref="Get"/> when the property did not exist.</summary>
         public sealed class NotFound { }
 
+        /// <inheritdoc />
         public PersistableDictionary(Guid persistenceGuid) : base(persistenceGuid)
         {
             var properties = new Dictionary<TKey, TValue>();
