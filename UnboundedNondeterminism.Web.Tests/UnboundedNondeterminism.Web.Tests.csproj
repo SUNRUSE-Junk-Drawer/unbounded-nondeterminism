@@ -94,10 +94,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ContentTypeMatcherTasksTests.cs" />
-    <Compile Include="ContentTypeParserTasksTests.cs" />
-    <Compile Include="ContentTypeParserTests.cs" />
-    <Compile Include="DummyEncoding.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
